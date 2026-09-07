@@ -22,10 +22,10 @@
 
 - [x] **W0 环境准备**（Redis PONG / tuyou 库 / GitHub 仓库 2 commits）
 - [x] **W1D1a 建表 SQL**：10 张表执行成功（`sql/init.sql`，`SHOW TABLES` 确认）
-- [ ] W1D1b 造数据脚本（`scripts/gen_data.py`：产品 10 万 / SKU 50 万 / 用户 50 万 / 订单 100 万 / 明细 200 万）
-- [ ] W1D1c ER 图入 README + 提交
-- [ ] W1D2 Spring Boot 骨架（可启动 + health 接口）
-- [ ] W1D3 用户模块（注册/登录/JWT，jjwt 0.12 新 API）
+- [x] **W1D1b 造数据脚本**：已跑通，数据量：产品 100,000 / SKU 500,000 / 用户 500,000 / 订单 1,000,000 / 明细 1,999,068，耗时约 2 分钟
+- [x] **W1D1c ER 图入 README + 提交**（commit 邮箱已全部重写为 noreply）
+- [x] **W1D2 Spring Boot 骨架**：启动成功 + `/api/health` 通过；期间解决 Redis 端口冲突（本机 Windows Redis 服务抢占 6379，已停用）与 git SSL 证书问题（http.sslVerify false）
+- [x] **W1D3 用户模块**：注册/登录/JWT/`/api/user/me` 全通（test01 用户 id=500001），错误 token 返回 401
 - [ ] W1D4 产品模块 CRUD + 分类/目的地
 - [ ] W1D5 第一波测试（JaCoCo）+ 提交
 - [ ] W2 搜索筛选 + 订单链路 + Redis 防超卖（Lua 原子扣减 / 缓存三防）
@@ -40,4 +40,4 @@
 
 ## 四、下一步
 
-**W1D1b**：运行 `scripts/gen_data.py` 造数据 → `SELECT COUNT(*)` 核对数据量达标（产品 10 万+ / SKU 50 万+ / 用户 50 万+ / 订单 100 万+ / 明细 200 万+）。
+**W1D4 产品模块**：MyBatis-Plus 分页插件配置；产品分页列表/详情（含 SKU 列表）/新增/修改/上下架；分类树、目的地列表；DTO/VO 分层；admin 接口做简单角色校验。
