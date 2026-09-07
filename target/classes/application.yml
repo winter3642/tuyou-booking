@@ -1,0 +1,23 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: tuyou-booking
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/tuyou?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
+    username: tuyou
+    password: tuyou123
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: tuyou123
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    # 开发期打印 SQL，W3 排查慢 SQL 用
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
