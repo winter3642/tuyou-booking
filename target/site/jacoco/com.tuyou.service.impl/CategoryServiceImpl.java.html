@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CategoryServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">tuyou-booking</a> &gt; <a href="index.source.html" class="el_package">com.tuyou.service.impl</a> &gt; <span class="el_source">CategoryServiceImpl.java</span></div><h1>CategoryServiceImpl.java</h1><pre class="source lang-java linenums">package com.tuyou.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.tuyou.entity.Category;
+import com.tuyou.mapper.CategoryMapper;
+import com.tuyou.service.CategoryService;
+import com.tuyou.vo.CategoryVO;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.BeanUtils;
+import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class CategoryServiceImpl implements CategoryService {
+
+    private final CategoryMapper categoryMapper;
+
+    @Override
+    public List&lt;CategoryVO&gt; tree() {
+<span class="nc" id="L26">        List&lt;Category&gt; all = categoryMapper.selectList(</span>
+<span class="nc" id="L27">                new LambdaQueryWrapper&lt;Category&gt;().orderByAsc(Category::getSort));</span>
+        // 按 parentId 分组，一次遍历构建树
+<span class="nc" id="L29">        Map&lt;Long, List&lt;Category&gt;&gt; byParent = all.stream()</span>
+<span class="nc" id="L30">                .collect(Collectors.groupingBy(Category::getParentId));</span>
+
+<span class="nc" id="L32">        List&lt;CategoryVO&gt; roots = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L33" title="All 2 branches missed.">        for (Category c : all) {</span>
+<span class="nc bnc" id="L34" title="All 4 branches missed.">            if (c.getParentId() != null &amp;&amp; c.getParentId() == 0L) {</span>
+<span class="nc" id="L35">                roots.add(toVO(c, byParent));</span>
+            }
+<span class="nc" id="L37">        }</span>
+<span class="nc" id="L38">        return roots;</span>
+    }
+
+    private CategoryVO toVO(Category c, Map&lt;Long, List&lt;Category&gt;&gt; byParent) {
+<span class="nc" id="L42">        CategoryVO vo = new CategoryVO();</span>
+<span class="nc" id="L43">        BeanUtils.copyProperties(c, vo);</span>
+<span class="nc" id="L44">        List&lt;Category&gt; children = byParent.getOrDefault(c.getId(), Collections.emptyList());</span>
+<span class="nc" id="L45">        vo.setChildren(children.stream()</span>
+<span class="nc" id="L46">                .map(ch -&gt; toVO(ch, byParent))</span>
+<span class="nc" id="L47">                .collect(Collectors.toList()));</span>
+<span class="nc" id="L48">        return vo;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
