@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -38,12 +39,42 @@ public class ProductServiceImpl implements ProductService {
         }
         qw.orderByDesc(Product::getCreateTime);
         IPage<Product> result = productMapper.selectPage(page, qw);
-        List<ProductVO> records = result.getRecords().stream().map(p -> {
-            ProductVO vo = new ProductVO();
-            BeanUtils.copyProperties(p, vo);
-            return vo;
-        }).collect(Collectors.toList());
-        return PageVO.of(result.getTotal(), records);
+        return toPageVO(result);
+    }
+
+    @Override
+    public PageVO<ProductVO> search(String keyword, Long categoryId, Long destinationId,
+                                    BigDecimal minPrice, BigDecimal maxPrice, String sortBy,
+                                    int pageNum, int pageSize) {
+        Page<Product> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<Product> qw = new LambdaQueryWrapper<>();
+        // 用户端只展示上架产品
+        qw.eq(Product::getStatus, 1);
+        // 关键词：LIKE '%kw%' 无法走索引，10 万行全表扫描 —— W3 慢 SQL 优化靶子
+        if (keyword != null && !keyword.isBlank()) {
+            qw.like(Product::getName, keyword.trim());
+        }
+        if (categoryId != null) {
+            qw.eq(Product::getCategoryId, categoryId);
+        }
+        if (destinationId != null) {
+            qw.eq(Product::getDestinationId, destinationId);
+        }
+        if (minPrice != null) {
+            qw.ge(Product::getPrice, minPrice);
+        }
+        if (maxPrice != null) {
+            qw.le(Product::getPrice, maxPrice);
+        }
+        // 排序白名单：只允许固定枚举，从根上杜绝"排序字段注入"
+        switch (sortBy == null ? "" : sortBy) {
+            case "price_asc" -> qw.orderByAsc(Product::getPrice);
+            case "price_desc" -> qw.orderByDesc(Product::getPrice);
+            case "score_desc" -> qw.orderByDesc(Product::getScore);
+            default -> qw.orderByDesc(Product::getSales); // 默认按销量
+        }
+        IPage<Product> result = productMapper.selectPage(page, qw);
+        return toPageVO(result);
     }
 
     @Override
@@ -95,5 +126,14 @@ public class ProductServiceImpl implements ProductService {
         }
         product.setStatus(status);
         productMapper.updateById(product);
+    }
+
+    private PageVO<ProductVO> toPageVO(IPage<Product> result) {
+        List<ProductVO> records = result.getRecords().stream().map(p -> {
+            ProductVO vo = new ProductVO();
+            BeanUtils.copyProperties(p, vo);
+            return vo;
+        }).collect(Collectors.toList());
+        return PageVO.of(result.getTotal(), records);
     }
 }

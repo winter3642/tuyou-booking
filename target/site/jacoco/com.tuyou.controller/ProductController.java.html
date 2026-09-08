@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
+
 /**
  * 产品接口：公开查询 + 管理端 CRUD
  */
@@ -35,36 +37,50 @@ public class ProductController {
     public Result&lt;PageVO&lt;ProductVO&gt;&gt; page(@RequestParam(defaultValue = &quot;1&quot;) int page,
                                           @RequestParam(defaultValue = &quot;10&quot;) int size,
                                           @RequestParam(required = false) Integer status) {
-<span class="nc" id="L38">        return Result.ok(productService.page(page, size, status));</span>
+<span class="nc" id="L40">        return Result.ok(productService.page(page, size, status));</span>
+    }
+
+    /** 产品搜索（用户端，只返回上架产品） */
+    @GetMapping(&quot;/products/search&quot;)
+    public Result&lt;PageVO&lt;ProductVO&gt;&gt; search(@RequestParam(required = false) String keyword,
+                                            @RequestParam(required = false) Long categoryId,
+                                            @RequestParam(required = false) Long destinationId,
+                                            @RequestParam(required = false) BigDecimal minPrice,
+                                            @RequestParam(required = false) BigDecimal maxPrice,
+                                            @RequestParam(required = false) String sortBy,
+                                            @RequestParam(defaultValue = &quot;1&quot;) int page,
+                                            @RequestParam(defaultValue = &quot;10&quot;) int size) {
+<span class="nc" id="L53">        return Result.ok(productService.search(keyword, categoryId, destinationId,</span>
+                minPrice, maxPrice, sortBy, page, size));
     }
 
     /** 产品详情（含 SKU 日期价格列表） */
     @GetMapping(&quot;/products/{id}&quot;)
     public Result&lt;ProductDetailVO&gt; detail(@PathVariable Long id) {
-<span class="nc" id="L44">        return Result.ok(productService.detail(id));</span>
+<span class="nc" id="L60">        return Result.ok(productService.detail(id));</span>
     }
 
     /** 新增产品（管理员） */
     @PostMapping(&quot;/admin/products&quot;)
     public Result&lt;Long&gt; create(@Valid @RequestBody ProductDTO dto) {
-<span class="nc" id="L50">        checkAdmin();</span>
-<span class="nc" id="L51">        return Result.ok(productService.create(dto));</span>
+<span class="nc" id="L66">        checkAdmin();</span>
+<span class="nc" id="L67">        return Result.ok(productService.create(dto));</span>
     }
 
     /** 修改产品（管理员） */
     @PutMapping(&quot;/admin/products/{id}&quot;)
     public Result&lt;Void&gt; update(@PathVariable Long id, @Valid @RequestBody ProductDTO dto) {
-<span class="nc" id="L57">        checkAdmin();</span>
-<span class="nc" id="L58">        productService.update(id, dto);</span>
-<span class="nc" id="L59">        return Result.ok();</span>
+<span class="nc" id="L73">        checkAdmin();</span>
+<span class="nc" id="L74">        productService.update(id, dto);</span>
+<span class="nc" id="L75">        return Result.ok();</span>
     }
 
     /** 上架/下架（管理员） */
     @PutMapping(&quot;/admin/products/{id}/status&quot;)
     public Result&lt;Void&gt; updateStatus(@PathVariable Long id, @RequestParam Integer status) {
-<span class="nc" id="L65">        checkAdmin();</span>
-<span class="nc" id="L66">        productService.updateStatus(id, status);</span>
-<span class="nc" id="L67">        return Result.ok();</span>
+<span class="nc" id="L81">        checkAdmin();</span>
+<span class="nc" id="L82">        productService.updateStatus(id, status);</span>
+<span class="nc" id="L83">        return Result.ok();</span>
     }
 
     /**
@@ -72,10 +88,10 @@ public class ProductController {
      * 面试话术：真实项目应使用 RBAC 权限表（角色-权限关联），这里为演示用简化判断
      */
     private void checkAdmin() {
-<span class="nc" id="L75">        String username = LoginUserHolder.getUsername();</span>
-<span class="nc bnc" id="L76" title="All 2 branches missed.">        if (!&quot;admin&quot;.equals(username)) {</span>
-<span class="nc" id="L77">            throw new BizException(ResultCode.FORBIDDEN);</span>
+<span class="nc" id="L91">        String username = LoginUserHolder.getUsername();</span>
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if (!&quot;admin&quot;.equals(username)) {</span>
+<span class="nc" id="L93">            throw new BizException(ResultCode.FORBIDDEN);</span>
         }
-<span class="nc" id="L79">    }</span>
+<span class="nc" id="L95">    }</span>
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

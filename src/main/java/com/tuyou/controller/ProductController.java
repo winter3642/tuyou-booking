@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.math.BigDecimal;
+
 /**
  * 产品接口：公开查询 + 管理端 CRUD
  */
@@ -36,6 +38,20 @@ public class ProductController {
                                           @RequestParam(defaultValue = "10") int size,
                                           @RequestParam(required = false) Integer status) {
         return Result.ok(productService.page(page, size, status));
+    }
+
+    /** 产品搜索（用户端，只返回上架产品） */
+    @GetMapping("/products/search")
+    public Result<PageVO<ProductVO>> search(@RequestParam(required = false) String keyword,
+                                            @RequestParam(required = false) Long categoryId,
+                                            @RequestParam(required = false) Long destinationId,
+                                            @RequestParam(required = false) BigDecimal minPrice,
+                                            @RequestParam(required = false) BigDecimal maxPrice,
+                                            @RequestParam(required = false) String sortBy,
+                                            @RequestParam(defaultValue = "1") int page,
+                                            @RequestParam(defaultValue = "10") int size) {
+        return Result.ok(productService.search(keyword, categoryId, destinationId,
+                minPrice, maxPrice, sortBy, page, size));
     }
 
     /** 产品详情（含 SKU 日期价格列表） */
