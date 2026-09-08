@@ -13,9 +13,6 @@ erDiagram
     t_order ||--|{ t_order_item : "明细"
     t_order_item }o--|| t_product_sku : "购买"
     t_order ||--o{ t_payment : "支付"
-'''
-
-表清单：t\_user / t\_category / t\_destination / t\_product / t\_product\_sku / t\_cart / t\_order / t\_order\_item / t\_payment / t\_review
 
 
 
