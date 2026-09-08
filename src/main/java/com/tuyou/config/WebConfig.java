@@ -7,7 +7,9 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Web 配置：注册 JWT 拦截器，放行注册/登录/健康检查
+ * Web 配置：注册 JWT 拦截器
+ * 放行：健康检查 / 注册登录 / 产品公开查询 / 分类 / 目的地
+ * 拦截：/api/** 其余路径（含 /api/admin/** 管理接口，需登录）
  */
 @Configuration
 @RequiredArgsConstructor
@@ -22,7 +24,11 @@ public class WebConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/api/health",
                         "/api/user/register",
-                        "/api/user/login"
+                        "/api/user/login",
+                        "/api/products",
+                        "/api/products/**",
+                        "/api/categories",
+                        "/api/destinations"
                 );
     }
 }

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * JWT 鉴权拦截器：从 Authorization: Bearer xxx 取 token，校验后把 userId 放入 ThreadLocal
+ * JWT 鉴权拦截器：从 Authorization: Bearer xxx 取 token，校验后把 userId/username 放入 ThreadLocal
  */
 @Component
 public class JwtInterceptor implements HandlerInterceptor {
@@ -28,7 +28,8 @@ public class JwtInterceptor implements HandlerInterceptor {
         try {
             String token = auth.substring(7);
             Claims claims = JwtUtil.parseToken(token);
-            LoginUserHolder.set(Long.valueOf(claims.getSubject()));
+            LoginUserHolder.set(Long.valueOf(claims.getSubject()),
+                    claims.get("username", String.class));
             return true;
         } catch (Exception e) {
             throw new BizException(ResultCode.UNAUTHORIZED);

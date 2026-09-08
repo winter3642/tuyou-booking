@@ -26,7 +26,7 @@
 - [x] **W1D1c ER 图入 README + 提交**（commit 邮箱已全部重写为 noreply）
 - [x] **W1D2 Spring Boot 骨架**：启动成功 + `/api/health` 通过；期间解决 Redis 端口冲突（本机 Windows Redis 服务抢占 6379，已停用）与 git SSL 证书问题（http.sslVerify false）
 - [x] **W1D3 用户模块**：注册/登录/JWT/`/api/user/me` 全通（test01 用户 id=500001），错误 token 返回 401
-- [ ] W1D4 产品模块 CRUD + 分类/目的地
+- [x] **W1D4 产品模块**：分页列表/详情(含SKU)/新增/修改/上下架/分类树/目的地 9 步清单全通（admin 鉴权 403 生效；测试新品 id=100001）
 - [ ] W1D5 第一波测试（JaCoCo）+ 提交
 - [ ] W2 搜索筛选 + 订单链路 + Redis 防超卖（Lua 原子扣减 / 缓存三防）
 - [ ] W3 慢 SQL 优化（EXPLAIN / 深分页 / 覆盖率 80%+）
@@ -38,6 +38,12 @@
 
 关键设计点：订单主键雪花 ID（分库分表铺路）；订单明细冗余快照；t_order 联合索引 `(user_id, create_time)`；t_product 索引 `(category_id, destination_id)` + `(status, sales)`。
 
+## 三·五、已踩坑记录（重要）
+
+- **MyBatis-Plus 3.5.9 分页插件找不到**：`PaginationInnerInterceptor` 从 `mybatis-plus-extension` 移到了独立模块 `mybatis-plus-jsqlparser`。pom 必须显式加：`com.baomidou:mybatis-plus-jsqlparser:${mybatis-plus.version}`（3.5.9 开始依赖 JSqlParser 的插件全部拆分到此模块）。
+- **Apifox 占位域名**：新建接口默认地址 `dev-cn.your-api-server.com` 是示例占位符，必须改成 `http://localhost:8080`；环境 baseURL 无尾斜杠时，接口路径必须以 `/` 开头（否则拼成 `localhost:8080api/...` 404）。
+- **JWT token 特征**：本系统 HS384 算法，token 以 `eyJhbGciOiJIUzM4NCJ9` 开头（含 typ 段的是 JWT.io 示例，不能用）。
+
 ## 四、下一步
 
-**W1D4 产品模块**：MyBatis-Plus 分页插件配置；产品分页列表/详情（含 SKU 列表）/新增/修改/上下架；分类树、目的地列表；DTO/VO 分层；admin 接口做简单角色校验。
+**W1D5 第一波测试**：引入 spring-boot-starter-test + JaCoCo 覆盖率插件；给 JwtUtil、ResultCode、用户服务（BCrypt/JWT）写单元测试；给产品分页/详情写集成测试；`mvn test` 全绿 + JaCoCo 报告，提交 W1 收官 commit。

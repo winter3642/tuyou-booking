@@ -1,6 +1,0 @@
-com\tuyou\common\BizException.class
-com\tuyou\common\GlobalExceptionHandler.class
-com\tuyou\common\Result.class
-com\tuyou\common\ResultCode.class
-com\tuyou\controller\HealthController.class
-com\tuyou\TuYouApplication.class
