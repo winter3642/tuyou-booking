@@ -8,10 +8,10 @@ tuyou-booking,com.tuyou.controller,CategoryController,5,0,0,0,1,0,1,0,1,0
 tuyou-booking,com.tuyou.controller,HealthController,0,6,0,0,0,2,0,2,0,2
 tuyou-booking,com.tuyou.controller,DestinationController,5,0,0,0,1,0,1,0,1,0
 tuyou-booking,com.tuyou.controller,UserController,18,0,0,0,4,0,3,0,3,0
-tuyou-booking,com.tuyou.controller,ProductController,52,0,2,0,14,0,7,0,6,0
+tuyou-booking,com.tuyou.controller,ProductController,65,0,2,0,15,0,8,0,7,0
 tuyou-booking,com.tuyou.service.impl,CategoryServiceImpl,82,0,6,0,17,0,6,0,3,0
 tuyou-booking,com.tuyou.service.impl,DestinationServiceImpl,30,0,0,0,8,0,2,0,2,0
-tuyou-booking,com.tuyou.service.impl,ProductServiceImpl,22,145,3,5,6,37,3,8,1,6
+tuyou-booking,com.tuyou.service.impl,ProductServiceImpl,22,247,4,22,6,58,4,19,1,8
 tuyou-booking,com.tuyou.service.impl,UserServiceImpl,28,144,6,12,4,30,4,9,0,4
 tuyou-booking,com.tuyou.utils,JwtUtil,3,37,0,0,1,13,1,3,1,3
 tuyou-booking,com.tuyou.interceptor,LoginUserHolder,32,0,0,0,11,0,6,0,6,0

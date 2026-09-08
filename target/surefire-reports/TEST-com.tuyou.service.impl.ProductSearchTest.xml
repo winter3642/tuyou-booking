@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.tuyou.service.impl.ProductServiceImplTest" time="0.201" tests="5" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.tuyou.service.impl.ProductSearchTest" time="6.788" tests="5" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="17"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -65,9 +65,9 @@
     <property name="java.class.version" value="61.0"/>
     <property name="LOGGED_APPLICATION_NAME" value="[tuyou-booking] "/>
   </properties>
-  <testcase name="pageOk" classname="com.tuyou.service.impl.ProductServiceImplTest" time="0.01"/>
-  <testcase name="updateStatus" classname="com.tuyou.service.impl.ProductServiceImplTest" time="0.085"/>
-  <testcase name="detailOk" classname="com.tuyou.service.impl.ProductServiceImplTest" time="0.04"/>
-  <testcase name="detailNotFound" classname="com.tuyou.service.impl.ProductServiceImplTest" time="0.011"/>
-  <testcase name="createOk" classname="com.tuyou.service.impl.ProductServiceImplTest" time="0.013"/>
+  <testcase name="searchDefaultSort" classname="com.tuyou.service.impl.ProductSearchTest" time="6.55"/>
+  <testcase name="searchScoreDesc" classname="com.tuyou.service.impl.ProductSearchTest" time="0.071"/>
+  <testcase name="searchPriceDesc" classname="com.tuyou.service.impl.ProductSearchTest" time="0.046"/>
+  <testcase name="searchAllConditions" classname="com.tuyou.service.impl.ProductSearchTest" time="0.035"/>
+  <testcase name="searchInvalidSortBy" classname="com.tuyou.service.impl.ProductSearchTest" time="0.011"/>
 </testsuite>
