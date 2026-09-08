@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CartServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">tuyou-booking</a> &gt; <a href="index.source.html" class="el_package">com.tuyou.service.impl</a> &gt; <span class="el_source">CartServiceImpl.java</span></div><h1>CartServiceImpl.java</h1><pre class="source lang-java linenums">package com.tuyou.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.tuyou.common.BizException;
+import com.tuyou.common.ResultCode;
+import com.tuyou.dto.CartDTO;
+import com.tuyou.entity.Cart;
+import com.tuyou.entity.Product;
+import com.tuyou.entity.ProductSku;
+import com.tuyou.mapper.CartMapper;
+import com.tuyou.mapper.ProductMapper;
+import com.tuyou.mapper.ProductSkuMapper;
+import com.tuyou.service.CartService;
+import com.tuyou.vo.CartItemVO;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class CartServiceImpl implements CartService {
+
+    private static final int MAX_QUANTITY = 99;
+
+    private final CartMapper cartMapper;
+    private final ProductSkuMapper skuMapper;
+    private final ProductMapper productMapper;
+
+    @Override
+    public void add(Long userId, CartDTO dto) {
+        // 校验 SKU（产品+日期）真实存在
+<span class="fc" id="L38">        ProductSku sku = skuMapper.selectById(dto.getSkuId());</span>
+<span class="fc bfc" id="L39" title="All 2 branches covered.">        if (sku == null) {</span>
+<span class="fc" id="L40">            throw new BizException(ResultCode.NOT_FOUND.getCode(), &quot;产品日期不存在&quot;);</span>
+        }
+        // 幂等加购：同 user+sku 唯一，先查后更
+<span class="fc" id="L43">        Cart existing = cartMapper.selectOne(new LambdaQueryWrapper&lt;Cart&gt;()</span>
+<span class="fc" id="L44">                .eq(Cart::getUserId, userId)</span>
+<span class="fc" id="L45">                .eq(Cart::getSkuId, dto.getSkuId()));</span>
+<span class="fc bfc" id="L46" title="All 2 branches covered.">        if (existing != null) {</span>
+<span class="fc" id="L47">            int newQty = existing.getQuantity() + dto.getQuantity();</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">            if (newQty &gt; MAX_QUANTITY) {</span>
+<span class="fc" id="L49">                throw new BizException(ResultCode.PARAM_ERROR.getCode(), &quot;购物车数量超出上限&quot;);</span>
+            }
+<span class="fc" id="L51">            existing.setQuantity(newQty);</span>
+<span class="fc" id="L52">            cartMapper.updateById(existing);</span>
+<span class="fc" id="L53">        } else {</span>
+<span class="fc" id="L54">            Cart cart = new Cart();</span>
+<span class="fc" id="L55">            cart.setUserId(userId);</span>
+<span class="fc" id="L56">            cart.setSkuId(dto.getSkuId());</span>
+<span class="fc" id="L57">            cart.setQuantity(dto.getQuantity());</span>
+<span class="fc" id="L58">            cartMapper.insert(cart);</span>
+        }
+<span class="fc" id="L60">    }</span>
+
+    @Override
+    public List&lt;CartItemVO&gt; list(Long userId) {
+<span class="fc" id="L64">        List&lt;Cart&gt; carts = cartMapper.selectList(new LambdaQueryWrapper&lt;Cart&gt;()</span>
+<span class="fc" id="L65">                .eq(Cart::getUserId, userId)</span>
+<span class="fc" id="L66">                .orderByDesc(Cart::getCreateTime));</span>
+<span class="pc bpc" id="L67" title="1 of 2 branches missed.">        if (carts.isEmpty()) {</span>
+<span class="nc" id="L68">            return Collections.emptyList();</span>
+        }
+        // 批量取 SKU 与产品，避免 N+1（面试点：IN 查询替代逐条查询）
+<span class="fc" id="L71">        List&lt;Long&gt; skuIds = carts.stream().map(Cart::getSkuId).collect(Collectors.toList());</span>
+<span class="fc" id="L72">        Map&lt;Long, ProductSku&gt; skuMap = skuMapper.selectBatchIds(skuIds).stream()</span>
+<span class="fc" id="L73">                .collect(Collectors.toMap(ProductSku::getId, s -&gt; s));</span>
+<span class="fc" id="L74">        List&lt;Long&gt; productIds = skuMap.values().stream()</span>
+<span class="fc" id="L75">                .map(ProductSku::getProductId).distinct().collect(Collectors.toList());</span>
+<span class="fc" id="L76">        Map&lt;Long, Product&gt; productMap = productMapper.selectBatchIds(productIds).stream()</span>
+<span class="fc" id="L77">                .collect(Collectors.toMap(Product::getId, p -&gt; p));</span>
+
+<span class="fc" id="L79">        List&lt;CartItemVO&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">        for (Cart c : carts) {</span>
+<span class="fc" id="L81">            ProductSku sku = skuMap.get(c.getSkuId());</span>
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">            if (sku == null) {</span>
+<span class="nc" id="L83">                continue; // SKU 已删除则跳过该行</span>
+            }
+<span class="fc" id="L85">            CartItemVO vo = new CartItemVO();</span>
+<span class="fc" id="L86">            vo.setId(c.getId());</span>
+<span class="fc" id="L87">            vo.setSkuId(c.getSkuId());</span>
+<span class="fc" id="L88">            vo.setQuantity(c.getQuantity());</span>
+<span class="fc" id="L89">            vo.setDepartDate(sku.getDepartDate());</span>
+<span class="fc" id="L90">            vo.setPrice(sku.getPrice());</span>
+<span class="fc" id="L91">            vo.setProductId(sku.getProductId());</span>
+<span class="fc" id="L92">            Product p = productMap.get(sku.getProductId());</span>
+<span class="pc bpc" id="L93" title="1 of 2 branches missed.">            vo.setProductName(p != null ? p.getName() : &quot;已失效产品&quot;);</span>
+<span class="fc" id="L94">            vo.setSubtotal(sku.getPrice().multiply(BigDecimal.valueOf(c.getQuantity())));</span>
+<span class="fc" id="L95">            result.add(vo);</span>
+<span class="fc" id="L96">        }</span>
+<span class="fc" id="L97">        return result;</span>
+    }
+
+    @Override
+    public void updateQuantity(Long userId, Long cartId, Integer quantity) {
+<span class="fc" id="L102">        Cart cart = requireOwned(userId, cartId);</span>
+<span class="pc bpc" id="L103" title="1 of 6 branches missed.">        if (quantity == null || quantity &lt; 1 || quantity &gt; MAX_QUANTITY) {</span>
+<span class="fc" id="L104">            throw new BizException(ResultCode.PARAM_ERROR.getCode(), &quot;数量必须在 1-99 之间&quot;);</span>
+        }
+<span class="fc" id="L106">        cart.setQuantity(quantity);</span>
+<span class="fc" id="L107">        cartMapper.updateById(cart);</span>
+<span class="fc" id="L108">    }</span>
+
+    @Override
+    public void delete(Long userId, Long cartId) {
+<span class="fc" id="L112">        Cart cart = requireOwned(userId, cartId);</span>
+<span class="fc" id="L113">        cartMapper.deleteById(cart.getId());</span>
+<span class="fc" id="L114">    }</span>
+
+    /** 归属校验：不存在 404，非本人 403（防水平越权） */
+    private Cart requireOwned(Long userId, Long cartId) {
+<span class="fc" id="L118">        Cart cart = cartMapper.selectById(cartId);</span>
+<span class="pc bpc" id="L119" title="1 of 2 branches missed.">        if (cart == null) {</span>
+<span class="nc" id="L120">            throw new BizException(ResultCode.NOT_FOUND);</span>
+        }
+<span class="fc bfc" id="L122" title="All 2 branches covered.">        if (!cart.getUserId().equals(userId)) {</span>
+<span class="fc" id="L123">            throw new BizException(ResultCode.FORBIDDEN);</span>
+        }
+<span class="fc" id="L125">        return cart;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

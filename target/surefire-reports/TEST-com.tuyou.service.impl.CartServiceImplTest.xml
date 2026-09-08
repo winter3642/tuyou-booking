@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.tuyou.service.impl.ProductServiceImplTest" time="0.036" tests="5" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.tuyou.service.impl.CartServiceImplTest" time="1.927" tests="8" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="17"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -65,9 +65,12 @@
     <property name="java.class.version" value="61.0"/>
     <property name="LOGGED_APPLICATION_NAME" value="[tuyou-booking] "/>
   </properties>
-  <testcase name="pageOk" classname="com.tuyou.service.impl.ProductServiceImplTest" time="0.003"/>
-  <testcase name="updateStatus" classname="com.tuyou.service.impl.ProductServiceImplTest" time="0.0"/>
-  <testcase name="detailOk" classname="com.tuyou.service.impl.ProductServiceImplTest" time="0.016"/>
-  <testcase name="detailNotFound" classname="com.tuyou.service.impl.ProductServiceImplTest" time="0.009"/>
-  <testcase name="createOk" classname="com.tuyou.service.impl.ProductServiceImplTest" time="0.007"/>
+  <testcase name="addNew" classname="com.tuyou.service.impl.CartServiceImplTest" time="1.833"/>
+  <testcase name="listOk" classname="com.tuyou.service.impl.CartServiceImplTest" time="0.037"/>
+  <testcase name="addOverLimit" classname="com.tuyou.service.impl.CartServiceImplTest" time="0.019"/>
+  <testcase name="updateQuantityForbidden" classname="com.tuyou.service.impl.CartServiceImplTest" time="0.007"/>
+  <testcase name="addExistingAccumulate" classname="com.tuyou.service.impl.CartServiceImplTest" time="0.0"/>
+  <testcase name="deleteOwnership" classname="com.tuyou.service.impl.CartServiceImplTest" time="0.015"/>
+  <testcase name="addSkuNotFound" classname="com.tuyou.service.impl.CartServiceImplTest" time="0.012"/>
+  <testcase name="updateQuantityOkAndInvalid" classname="com.tuyou.service.impl.CartServiceImplTest" time="0.004"/>
 </testsuite>
