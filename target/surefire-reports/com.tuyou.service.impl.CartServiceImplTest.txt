@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: com.tuyou.service.impl.CartServiceImplTest
--------------------------------------------------------------------------------
-Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 1.927 s -- in com.tuyou.service.impl.CartServiceImplTest
