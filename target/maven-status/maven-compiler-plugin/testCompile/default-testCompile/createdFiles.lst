@@ -2,4 +2,5 @@ com\tuyou\service\impl\UserServiceImplTest.class
 com\tuyou\utils\JwtUtilTest.class
 com\tuyou\controller\HealthControllerTest.class
 com\tuyou\service\impl\ProductSearchTest.class
+com\tuyou\service\impl\CartServiceImplTest.class
 com\tuyou\service\impl\ProductServiceImplTest.class
