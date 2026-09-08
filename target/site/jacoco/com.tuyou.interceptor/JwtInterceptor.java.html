@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="zh"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JwtInterceptor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">tuyou-booking</a> &gt; <a href="index.source.html" class="el_package">com.tuyou.interceptor</a> &gt; <span class="el_source">JwtInterceptor.java</span></div><h1>JwtInterceptor.java</h1><pre class="source lang-java linenums">package com.tuyou.interceptor;
+
+import com.tuyou.common.BizException;
+import com.tuyou.common.ResultCode;
+import com.tuyou.utils.JwtUtil;
+import io.jsonwebtoken.Claims;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerInterceptor;
+
+/**
+ * JWT 鉴权拦截器：从 Authorization: Bearer xxx 取 token，校验后把 userId/username 放入 ThreadLocal
+ */
+@Component
+<span class="fc" id="L16">public class JwtInterceptor implements HandlerInterceptor {</span>
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // 放行 CORS 预检请求
+<span class="nc bnc" id="L21" title="All 2 branches missed.">        if (&quot;OPTIONS&quot;.equalsIgnoreCase(request.getMethod())) {</span>
+<span class="nc" id="L22">            return true;</span>
+        }
+<span class="nc" id="L24">        String auth = request.getHeader(&quot;Authorization&quot;);</span>
+<span class="nc bnc" id="L25" title="All 4 branches missed.">        if (auth == null || !auth.startsWith(&quot;Bearer &quot;)) {</span>
+<span class="nc" id="L26">            throw new BizException(ResultCode.UNAUTHORIZED);</span>
+        }
+        try {
+<span class="nc" id="L29">            String token = auth.substring(7);</span>
+<span class="nc" id="L30">            Claims claims = JwtUtil.parseToken(token);</span>
+<span class="nc" id="L31">            LoginUserHolder.set(Long.valueOf(claims.getSubject()),</span>
+<span class="nc" id="L32">                    claims.get(&quot;username&quot;, String.class));</span>
+<span class="nc" id="L33">            return true;</span>
+<span class="nc" id="L34">        } catch (Exception e) {</span>
+<span class="nc" id="L35">            throw new BizException(ResultCode.UNAUTHORIZED);</span>
+        }
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+                                Object handler, Exception ex) {
+        // 请求结束清理 ThreadLocal，防止线程池复用导致串号/内存泄漏（面试常问）
+<span class="nc" id="L43">        LoginUserHolder.clear();</span>
+<span class="nc" id="L44">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
