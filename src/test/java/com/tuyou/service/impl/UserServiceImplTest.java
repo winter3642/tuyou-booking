@@ -125,6 +125,22 @@ class UserServiceImplTest {
     }
 
     @Test
+    @DisplayName("注册手机号重复：抛参数错误且不落库")
+    void registerDuplicatePhone() {
+        // 第一次 selectCount 查用户名(0)，第二次查手机号(1)
+        when(userMapper.selectCount(any(LambdaQueryWrapper.class)))
+                .thenReturn(0L).thenReturn(1L);
+
+        RegisterDTO dto = new RegisterDTO();
+        dto.setUsername("newuser2");
+        dto.setPassword("123456");
+        dto.setPhone("13800000000");
+        BizException ex = assertThrows(BizException.class, () -> userService.register(dto));
+        assertEquals("手机号已注册", ex.getMessage());
+        verify(userMapper, never()).insert(any(User.class));
+    }
+
+    @Test
     @DisplayName("禁用账号（status=0）禁止登录，返回 403")
     void loginDisabledUser() {
         User user = new User();

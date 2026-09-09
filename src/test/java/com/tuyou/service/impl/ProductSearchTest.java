@@ -15,11 +15,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -120,5 +124,63 @@ class ProductSearchTest {
         PageVO<ProductVO> result = productService.search(null, null, null,
                 null, null, "name;drop table", 1, 10);
         assertEquals(8L, result.getTotal());
+    }
+
+    // ---------- W3D3 深分页（offset >= 10000 走延迟关联） ----------
+
+    private Product product(long id, String name) {
+        Product p = new Product();
+        p.setId(id);
+        p.setName(name);
+        p.setStatus(1);
+        return p;
+    }
+
+    @Test
+    @DisplayName("深分页：第一步只查主键（覆盖索引），第二步按主键回表并按 ids 顺序重排")
+    void searchDeepPage() {
+        // page=1001 size=10 → offset=10000 触发延迟关联
+        when(productMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(20000L);
+        // 第一步返回纯 id 行（顺序即最终排序结果）
+        when(productMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(product(30L, ""), product(10L, ""), product(20L, "")));
+        // 第二步 IN 查询故意乱序返回，验证按 ids 顺序重排（ArrayList：被测代码会 sort，List.of 不可变会抛异常）
+        when(productMapper.selectBatchIds(List.of(30L, 10L, 20L)))
+                .thenReturn(new ArrayList<>(List.of(product(20L, "产品20"), product(10L, "产品10"), product(30L, "产品30"))));
+
+        PageVO<ProductVO> result = productService.search(null, null, null,
+                null, null, null, 1001, 10);
+
+        assertEquals(20000L, result.getTotal());
+        assertEquals(List.of("产品30", "产品10", "产品20"),
+                result.getRecords().stream().map(ProductVO::getName).toList());
+        // 深分页不经过 selectPage
+        verify(productMapper, never()).selectPage(any(Page.class), any(LambdaQueryWrapper.class));
+    }
+
+    @Test
+    @DisplayName("深分页：total=0 直接返回空页，不查第二段")
+    void searchDeepPageZeroTotal() {
+        when(productMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(0L);
+
+        PageVO<ProductVO> result = productService.search("桂林", null, null,
+                null, null, null, 1001, 10);
+
+        assertEquals(0L, result.getTotal());
+        verify(productMapper, never()).selectList(any(LambdaQueryWrapper.class));
+    }
+
+    @Test
+    @DisplayName("深分页：offset 超界返回空 records 但保留 total")
+    void searchDeepPageOffsetOverflow() {
+        when(productMapper.selectCount(any(LambdaQueryWrapper.class))).thenReturn(20000L);
+        when(productMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
+
+        PageVO<ProductVO> result = productService.search(null, null, null,
+                null, null, null, 1001, 10);
+
+        assertEquals(20000L, result.getTotal());
+        assertEquals(0, result.getRecords().size());
+        verify(productMapper, never()).selectBatchIds(any());
     }
 }

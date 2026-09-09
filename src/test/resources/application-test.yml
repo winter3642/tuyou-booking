@@ -1,0 +1,14 @@
+# W3D4 测试专用配置：独立测试库 tuyou_test，测试数据与主库完全隔离
+# 使用方式：测试类上加 @ActiveProfiles("test") 自动切换
+# 环境变量可覆盖（W4D1 CI 里用 TEST_DB_USER=root 连 CI 的 MySQL 服务），本地默认值零配置
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${TEST_DB_URL:jdbc:mysql://localhost:3306/tuyou_test?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8}
+    username: ${TEST_DB_USER:tuyou}
+    password: ${TEST_DB_PASSWORD:tuyou123}
+
+mybatis-plus:
+  configuration:
+    # 测试时关掉 SQL 打印，避免刷屏
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
