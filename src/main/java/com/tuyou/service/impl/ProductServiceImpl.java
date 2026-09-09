@@ -26,7 +26,10 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -61,17 +64,37 @@ public class ProductServiceImpl implements ProductService {
         return toPageVO(result);
     }
 
+    /** 深分页阈值：offset 超过该值改用延迟关联（W3D3），避免为丢弃的行做大量回表 */
+    private static final long DEEP_PAGE_OFFSET_THRESHOLD = 10_000;
+
     @Override
     public PageVO<ProductVO> search(String keyword, Long categoryId, Long destinationId,
                                     BigDecimal minPrice, BigDecimal maxPrice, String sortBy,
                                     int pageNum, int pageSize) {
+        long offset = (long) (pageNum - 1) * pageSize;
+        if (offset >= DEEP_PAGE_OFFSET_THRESHOLD) {
+            // 深分页走延迟关联：第一步只查主键（覆盖索引，不回表），第二步按主键取整行
+            return searchDeepPage(keyword, categoryId, destinationId, minPrice, maxPrice, sortBy, pageNum, pageSize);
+        }
         Page<Product> page = new Page<>(pageNum, pageSize);
+        IPage<Product> result = productMapper.selectPage(page, buildQuery(keyword, categoryId, destinationId,
+                minPrice, maxPrice, sortBy));
+        return toPageVO(result);
+    }
+
+    /** 构建搜索条件（普通分页与深分页共用，保证两种路径条件一致） */
+    private LambdaQueryWrapper<Product> buildQuery(String keyword, Long categoryId, Long destinationId,
+                                                   BigDecimal minPrice, BigDecimal maxPrice, String sortBy) {
         LambdaQueryWrapper<Product> qw = new LambdaQueryWrapper<>();
         // 用户端只展示上架产品
         qw.eq(Product::getStatus, 1);
-        // 关键词：LIKE '%kw%' 无法走索引，10 万行全表扫描 —— W3 慢 SQL 优化靶子
+        // 关键词：FULLTEXT 全文索引（ft_name, ngram 分词），LIKE '%kw%' 前导通配符无法走索引 —— W3D2 优化
+        // BOOLEAN MODE：不算相关度分数，高命中词也不会劣化；清洗布尔操作符防语法错误/注入
         if (keyword != null && !keyword.isBlank()) {
-            qw.like(Product::getName, keyword.trim());
+            String kw = keyword.trim().replaceAll("[+\\-<>()~*\"@]", " ");
+            if (!kw.isBlank()) {
+                qw.apply("MATCH(name) AGAINST({0} IN BOOLEAN MODE)", kw);
+            }
         }
         if (categoryId != null) {
             qw.eq(Product::getCategoryId, categoryId);
@@ -92,8 +115,41 @@ public class ProductServiceImpl implements ProductService {
             case "score_desc" -> qw.orderByDesc(Product::getScore);
             default -> qw.orderByDesc(Product::getSales); // 默认按销量
         }
-        IPage<Product> result = productMapper.selectPage(page, qw);
-        return toPageVO(result);
+        return qw;
+    }
+
+    /**
+     * 深分页（W3D3 延迟关联）：
+     * 优化前 SELECT * ... LIMIT 90000,20 —— 要跳过 9 万行，每跳一行都要回表取整行再丢弃
+     * 优化后分两步 —— ① 只取主键（idx_status_sales 覆盖索引纯遍历，Extra=Using index）
+     * ② 主键 IN 取回 20 行整行，再按第①步顺序重排（IN 不保证顺序）
+     * EXPLAIN ANALYZE 同口径实测（10 万行、offset=90000）：91.5ms → 21.6ms（CPU 成本）
+     * API 级耗时在本数据规模（内存回表）下两方案接近，差距随数据量/冷缓存放大，见 README 优化专题
+     */
+    private PageVO<ProductVO> searchDeepPage(String keyword, Long categoryId, Long destinationId,
+                                             BigDecimal minPrice, BigDecimal maxPrice, String sortBy,
+                                             int pageNum, int pageSize) {
+        long offset = (long) (pageNum - 1) * pageSize;
+        LambdaQueryWrapper<Product> qw = buildQuery(keyword, categoryId, destinationId, minPrice, maxPrice, sortBy);
+        long total = productMapper.selectCount(qw);
+        if (total == 0) {
+            return PageVO.of(0L, List.of());
+        }
+        // ① 覆盖索引取主键：select 只保留 id，extra 出现 Using index，跳过 offset 行没有回表成本
+        List<Product> idRows = productMapper.selectList(
+                qw.select(Product::getId).last("LIMIT " + offset + ", " + pageSize));
+        if (idRows.isEmpty()) {
+            return PageVO.of(total, List.of());
+        }
+        List<Long> ids = idRows.stream().map(Product::getId).toList();
+        // ② 主键批量取整行（每行最多一次回表，共 pageSize 次）
+        List<Product> rows = productMapper.selectBatchIds(ids);
+        Map<Long, Integer> order = new HashMap<>();
+        for (int i = 0; i < ids.size(); i++) {
+            order.put(ids.get(i), i);
+        }
+        rows.sort(Comparator.comparingInt(p -> order.getOrDefault(p.getId(), Integer.MAX_VALUE)));
+        return toPageVO(rows, total);
     }
 
     /**
@@ -167,6 +223,8 @@ public class ProductServiceImpl implements ProductService {
         // MP updateById 默认忽略 null 字段，所以 dto 里没传的字段不会被覆盖
         BeanUtils.copyProperties(dto, product);
         productMapper.updateById(product);
+        // 先改 DB 再删缓存（W2D3）：避免"删了缓存还没改完 DB"的窗口期别的请求把旧值写回缓存
+        redisTemplate.delete(DETAIL_KEY_PREFIX + id);
     }
 
     @Override
@@ -177,6 +235,8 @@ public class ProductServiceImpl implements ProductService {
         }
         product.setStatus(status);
         productMapper.updateById(product);
+        // 上下架同样失效详情缓存，防止列表/详情状态不一致
+        redisTemplate.delete(DETAIL_KEY_PREFIX + id);
     }
 
     /** 查库 + 回填缓存 */
@@ -233,5 +293,15 @@ public class ProductServiceImpl implements ProductService {
             return vo;
         }).collect(Collectors.toList());
         return PageVO.of(result.getTotal(), records);
+    }
+
+    /** 深分页路径没有 IPage，用显式 total 构建分页结果 */
+    private PageVO<ProductVO> toPageVO(List<Product> rows, long total) {
+        List<ProductVO> records = rows.stream().map(p -> {
+            ProductVO vo = new ProductVO();
+            BeanUtils.copyProperties(p, vo);
+            return vo;
+        }).collect(Collectors.toList());
+        return PageVO.of(total, records);
     }
 }
