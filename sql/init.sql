@@ -49,7 +49,13 @@ CREATE TABLE IF NOT EXISTS t_product (
   status TINYINT NOT NULL DEFAULT 0 COMMENT '0下架 1上架',
   create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_cat_dest (category_id, destination_id),
-  KEY idx_status_sales (status, sales)
+  KEY idx_status_sales (status, sales),
+  -- W3D2 新增：等值列在前、范围列在后（分类+目的地+价格区间筛选，消除 filesort）
+  KEY idx_cat_dest_price (category_id, destination_id, price),
+  -- W3D2 新增：搜索默认销量排序（分类+上架等值 + 销量排序列）
+  KEY idx_cat_status_sales (category_id, status, sales),
+  -- W3D2 新增：ngram 全文索引（2 字符切词，支持中文），关键词搜索从 LIKE 全表扫描改为全文检索
+  FULLTEXT KEY ft_name (name) WITH PARSER ngram
 ) ENGINE=InnoDB COMMENT='产品主表';
 
 -- 5. SKU 库存表（按日期粒度，节假日可调价）
