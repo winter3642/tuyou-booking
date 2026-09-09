@@ -10,3 +10,6 @@
 *.rar
 # Build output
 target/
+
+# Claude Code 会话数据
+.claude/

@@ -32,8 +32,12 @@
 - [x] **W2D2 购物车**：加购幂等（同 user+sku 唯一索引、先查后更，多次加购仅 1 行数量累加）6 步验收全通；改数量/删除归属校验生效（admin 越权改 test01 购物车返回 403）；列表批量 IN 组装避免 N+1
 - [x] **W2D3 订单链路**：下单事务全通——雪花ID订单(222981114292080640)+明细快照+支付单(mock)+扣库存(44→40/104→103)+清购物车；条件扣库存 `UPDATE...WHERE stock>=?` 防超卖生效（超量下单→400库存不足→事务回滚无新订单）；越权查他人订单 403；测试 37 个全绿
 - [x] **W2D4 Redis Lua 防超卖 + 缓存三防**（W2 收官）：`StockRedisService` Lua 原子扣减（未初始化返回 -1 / 不足返回 0 / 成功返回 1），下单链路"Redis 预扣 → DB 扣减兜底 → 失败回滚 Redis"；产品详情 Cache-Aside + 三防（空值缓存 60s 防穿透、Redisson 互斥锁防击穿、600s+0~300s 随机抖动防雪崩）。实测：`GET product:detail:1` 缓存 JSON + TTL 668；`GET product:detail:99999` → `\x00NULL\x00`；`stock:sku:4` nil→40(初始化)→39(预扣)，MySQL sku4=39 双写一致；超量(51>40)下单被 Lua 原子拒绝 400 且不落库。测试 47 个全绿（新增 StockRedis 6 + 订单回滚/初始化 2 + 缓存 3）
-- [ ] W3 慢 SQL 优化（EXPLAIN / 深分页 / 覆盖率 80%+）
-- [ ] W4 CI/CD + 部署 + 压测 + 文档
+- [x] **W3D2 关键词搜索优化**：LIKE '%kw%' → ngram FULLTEXT（`ft_name`），EXPLAIN `type=fulltext/rows=1` 替代全索引扫描；实测低频词 SQL 88.7ms→37.8ms、API ~180ms→~100ms；高频词两方案持平（LIKE 提前截断 vs FULLTEXT 固定解析成本，取舍已入 README）
+- [x] **W3D2 组合条件索引**：`idx_cat_dest_price`（等值在前、范围在后）+ `idx_cat_status_sales`（分类+上架+销量排序），无索引反扫 49631 行→范围扫描 964 行（5.1ms→3.4ms）
+- [x] **W3D3 深分页延迟关联**：offset≥10000 走两步查询（覆盖索引取主键→IN 回表重排），EXPLAIN ANALYZE 91.5ms→21.6ms（CPU 口径）；API 级在 10 万行内存回表下两方案接近（~20ms），差距随数据量/冷缓存放大——诚实记录见 README
+- [x] **W3D4 测试补全**：104 个测试全绿、JaCoCo **95.9%**（470/490 行，不含 entity/dto/vo）；补了锁分支 4 例、深分页 3 例、雪花 ID 4 例、拦截器 6 例、全局异常 4 例、缓存失效断言等
+- [x] **W3D5 汇总**：优化前后对比表入 README（EXPLAIN 与 API 双口径）+ 提交
+- [ ] W4 CI/CD + 部署 + 压测 + 文档（操作指南见 `docs/W4-操作指南.md`）
 
 ## 三、10 张表清单（W3 优化对象）
 
@@ -54,7 +58,11 @@
 - **Mockito `thenReturn` 参数里别写可能抛异常的调用**：序列化等异常会被吞成误导性的 `UnfinishedStubbing`；先求值到变量再 stub。
 - **verify 次数要对齐真实调用**：`redisNotInitThenOk` 场景 `tryDeduct` 真实被调 2 次（探测未初始化 + 初始化后重试），断言要 `times(2)`。
 - **Mockito @Spy 与 @InjectMocks**：被注入的 `ObjectMapper` 用 `@Spy` + 字段初始化器注册模块，测试类内直接用同一实例做序列化。
+- **@Sql 脚本中文乱码（W3D4 踩坑）**：Spring 读 `@Sql` 脚本默认用平台编码（Windows=GBK），UTF-8 脚本里的中文 INSERT 进库全是乱码，断言 expected 正确、actual 乱码，排查半天。修法：类上加 `@SqlConfig(encoding = "UTF-8")`。**排查手法**：别信终端显示（Git Bash 会把两边都显示成乱码），用 Python 按字节比对 surefire 报告与 .class 常量池。
+- **pom 要显式 `project.build.sourceEncoding=UTF-8`**：虽然 Spring Boot parent 已设，但显式声明可防依赖 Maven 全局配置导致的中文编译乱码（W3D4 排障时顺手固化）。
+- **测试数据库无 root 权限怎么办**：Docker 起专用测试 MySQL（`docker run -d --name tuyou-test-mysql -p 3307:3306 -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=tuyou_test mysql:8`），跑测试时 `TEST_DB_URL='jdbc:mysql://localhost:3307/tuyou_test?...' TEST_DB_USER=root TEST_DB_PASSWORD=root mvn test`（application-test.yml 已支持环境变量覆盖）。本机 MySQL 想建 tuyou_test 库需 root 执行 CREATE DATABASE + GRANT。
+- **FULLTEXT 实测教训**：EXPLAIN ANALYZE 与 SHOW PROFILES 对 fulltext 的耗时口径差异大；全文索引有固定解析成本（本机 ~40-55ms/条），分页接口 COUNT+PAGE 两条查询都要付一次；LIKE 在高频词下靠 LIMIT 提前截断反而快。**优化要测边界场景 + 双口径记录，面试才经得起追问。**
 
 ## 四、下一步
 
-**W3 慢 SQL 优化（4 天）**：W2D1 的 `keyword LIKE '%桂林%'` 557ms 全表扫描是靶子——用 `EXPLAIN` 看执行计划 → 加索引/改查询 → 深分页优化（`LIMIT 100000,20` 换游标/子查询）→ 覆盖率从 56% 提到 80%+（补 Controller 层测试）。**面试硬核：EXPLAIN 的 type/key/rows 怎么读，索引失效场景（前导通配符/函数包裹/隐式转换）**。
+**W4（4-5 天）**：按 `docs/W4-操作指南.md` 执行——Dockerfile + GitHub Actions（CI 里 MySQL/Redis 服务、测试库环境变量已就绪）→ 本机 Docker Compose 全流程 → JMeter 压测（下单 QPS + 1000 并发超卖验证）→ README/视频/Release → 简历对接。
