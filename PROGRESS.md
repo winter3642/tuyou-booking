@@ -2,7 +2,7 @@
 
 > **用途**：对话上下文丢失 / 想开新对话继续时，把本文件发给 AI 并说"继续途游项目"，即可恢复全部关键信息。
 > **维护**：每完成一个大步骤由 AI 更新；建议随代码一起提交到 GitHub。
-> 最后更新：2026-09-07
+> 最后更新：2026-09-09
 
 ---
 
@@ -31,7 +31,7 @@
 - [x] **W2D1 产品搜索**：关键词/分类/目的地/价格区间/排序白名单 5 步验收全通；上架过滤生效（下架搜不到）；`keyword=桂林` 557ms 全表扫描记录在案（W3 优化基线）
 - [x] **W2D2 购物车**：加购幂等（同 user+sku 唯一索引、先查后更，多次加购仅 1 行数量累加）6 步验收全通；改数量/删除归属校验生效（admin 越权改 test01 购物车返回 403）；列表批量 IN 组装避免 N+1
 - [x] **W2D3 订单链路**：下单事务全通——雪花ID订单(222981114292080640)+明细快照+支付单(mock)+扣库存(44→40/104→103)+清购物车；条件扣库存 `UPDATE...WHERE stock>=?` 防超卖生效（超量下单→400库存不足→事务回滚无新订单）；越权查他人订单 403；测试 37 个全绿
-- [ ] W2D4 Redis Lua 防超卖 + 缓存三防
+- [x] **W2D4 Redis Lua 防超卖 + 缓存三防**（W2 收官）：`StockRedisService` Lua 原子扣减（未初始化返回 -1 / 不足返回 0 / 成功返回 1），下单链路"Redis 预扣 → DB 扣减兜底 → 失败回滚 Redis"；产品详情 Cache-Aside + 三防（空值缓存 60s 防穿透、Redisson 互斥锁防击穿、600s+0~300s 随机抖动防雪崩）。实测：`GET product:detail:1` 缓存 JSON + TTL 668；`GET product:detail:99999` → `\x00NULL\x00`；`stock:sku:4` nil→40(初始化)→39(预扣)，MySQL sku4=39 双写一致；超量(51>40)下单被 Lua 原子拒绝 400 且不落库。测试 47 个全绿（新增 StockRedis 6 + 订单回滚/初始化 2 + 缓存 3）
 - [ ] W3 慢 SQL 优化（EXPLAIN / 深分页 / 覆盖率 80%+）
 - [ ] W4 CI/CD + 部署 + 压测 + 文档
 
@@ -48,7 +48,13 @@
 - **JWT token 特征**：本系统 HS384 算法，token 以 `eyJhbGciOiJIUzM4NCJ9` 开头（含 typ 段的是 JWT.io 示例，不能用）。
 - **Mockito 与 3.5.9 重载歧义**：BaseMapper 有 `insert(T)` 和 `insert(Collection<T>)` 两个重载，测试里 `verify(...).insert(any())` 会报"引用不明确"，必须写 `any(User.class)` 等明确类型。
 - **JaCoCo 用法**：pom 加 jacoco-maven-plugin（prepare-agent + report@verify），跑 `mvn test jacoco:report`，报告在 `target/site/jacoco/index.html`。
+- **RedisScript 的包路径**：`RedisScript`/`DefaultRedisScript` 在 `org.springframework.data.redis.core.script` 子包，**不在** `core` 下（import 写错会"找不到符号"）。
+- **SkuVO 字段**：只有 `id/departDate/stock/price`，**没有 productId**（BeanUtils 只复制同名属性，测试里别 set 不存在的字段）。
+- **单元测试里的 ObjectMapper**：`new ObjectMapper()` 默认**不注册 JSR310 模块**，序列化 `LocalDate` 会抛异常（真实运行用的是 Spring Boot 自动配置的 mapper，没问题）；测试里必须 `new ObjectMapper().registerModule(new JavaTimeModule())`。
+- **Mockito `thenReturn` 参数里别写可能抛异常的调用**：序列化等异常会被吞成误导性的 `UnfinishedStubbing`；先求值到变量再 stub。
+- **verify 次数要对齐真实调用**：`redisNotInitThenOk` 场景 `tryDeduct` 真实被调 2 次（探测未初始化 + 初始化后重试），断言要 `times(2)`。
+- **Mockito @Spy 与 @InjectMocks**：被注入的 `ObjectMapper` 用 `@Spy` + 字段初始化器注册模块，测试类内直接用同一实例做序列化。
 
 ## 四、下一步
 
-**W2D4 Redis Lua 防超卖 + 缓存三防**：把库存扣减从 DB 移到 Redis（`hincrby`/Lua 脚本原子判断"剩余>=购买量"），下单链路插入"Redis 预扣 → DB 扣减兜底 → 失败回滚 Redis"；同时给产品详情/列表加 Redis 缓存（防穿透/击穿/雪崩的三防手段：空值缓存、互斥重建、过期时间+随机抖动）。**面试硬核：高并发下 DB 行锁排队→Redis 原子操作 10 倍吞吐**。
+**W3 慢 SQL 优化（4 天）**：W2D1 的 `keyword LIKE '%桂林%'` 557ms 全表扫描是靶子——用 `EXPLAIN` 看执行计划 → 加索引/改查询 → 深分页优化（`LIMIT 100000,20` 换游标/子查询）→ 覆盖率从 56% 提到 80%+（补 Controller 层测试）。**面试硬核：EXPLAIN 的 type/key/rows 怎么读，索引失效场景（前导通配符/函数包裹/隐式转换）**。
