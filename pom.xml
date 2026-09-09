@@ -19,6 +19,9 @@
 
     <properties>
         <java.version>17</java.version>
+        <!-- Windows 下 mvn 编译默认 GBK，测试源码是 UTF-8，不显式声明中文断言会乱码（踩坑记录） -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <mybatis-plus.version>3.5.9</mybatis-plus.version>
         <jjwt.version>0.12.6</jjwt.version>
         <redisson.version>3.35.0</redisson.version>
@@ -42,6 +45,7 @@
             <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
             <version>${mybatis-plus.version}</version>
         </dependency>
+        <!-- MyBatis-Plus 3.5.9 分页插件拆分到独立包：不加会报 PaginationInnerInterceptor 找不到符号 -->
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-jsqlparser</artifactId>
@@ -103,21 +107,24 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
+            <!-- JaCoCo 覆盖率：mvn test jacoco:report 查看 target/site/jacoco/index.html
+                 W3D4 要求 80%+：entity/dto/vo 纯数据类不计入 -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.12</version>
+                <configuration>
+                    <excludes>
+                        <exclude>com/tuyou/entity/**</exclude>
+                        <exclude>com/tuyou/dto/**</exclude>
+                        <exclude>com/tuyou/vo/**</exclude>
+                        <exclude>com/tuyou/TuYouApplication.class</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
                             <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>report</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>report</goal>
                         </goals>
                     </execution>
                 </executions>

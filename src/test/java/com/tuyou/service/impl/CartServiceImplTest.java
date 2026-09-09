@@ -199,4 +199,41 @@ class CartServiceImplTest {
         cartService.delete(1L, 1L);
         verify(cartMapper).deleteById(1L);
     }
+
+    @Test
+    @DisplayName("列表：空购物车直接返回空列表，不发批量查询")
+    void listEmpty() {
+        when(cartMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
+
+        List<CartItemVO> result = cartService.list(1L);
+
+        assertEquals(0, result.size());
+        verify(skuMapper, never()).selectBatchIds(anyCollection());
+    }
+
+    @Test
+    @DisplayName("列表：SKU 已删除则跳过该行（不抛异常），产品缺失显示已失效")
+    void listSkuDeletedAndProductMissing() {
+        Cart c1 = new Cart();
+        c1.setId(1L);
+        c1.setUserId(1L);
+        c1.setSkuId(10L);
+        c1.setQuantity(1);
+        // SKU 已删：批量查询返回空
+        when(cartMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Collections.singletonList(c1));
+        when(skuMapper.selectBatchIds(anyCollection())).thenReturn(Collections.emptyList());
+
+        List<CartItemVO> result = cartService.list(1L);
+
+        assertEquals(0, result.size(), "失效 SKU 行应被跳过");
+
+        // 第二段：SKU 在、产品被删 → 名称兜底"已失效产品"
+        when(skuMapper.selectBatchIds(anyCollection())).thenReturn(Collections.singletonList(sku(10L, 100L)));
+        when(productMapper.selectBatchIds(anyCollection())).thenReturn(Collections.emptyList());
+
+        List<CartItemVO> result2 = cartService.list(1L);
+        assertEquals(1, result2.size());
+        assertEquals("已失效产品", result2.get(0).getProductName());
+    }
 }
