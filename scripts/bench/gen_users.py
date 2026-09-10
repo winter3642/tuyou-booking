@@ -16,7 +16,8 @@ import requests
 
 def one_user(i, base_url, sku, with_cart):
     """注册一个用户，返回 (token, cartId)。cartId 仅在 with_cart 时有值。"""
-    ts = int(time.time() * 1000) % 10 ** 11
+    # 用户名限 3-20 位：bench_ + 7位时间戳 + _ + 序号
+    ts = int(time.time() * 1000) % 10 ** 7
     username = f"bench_{ts}_{i}"
     # 1. 注册
     r = requests.post(f"{base_url}/api/user/register",

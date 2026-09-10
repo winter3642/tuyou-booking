@@ -4,6 +4,8 @@
 services:
   mysql:
     image: mysql:8
+    # W4D3 压测调优：镜像默认 innodb_buffer_pool_size 128MB，装不下 100 万订单表（磁盘 IO 成瓶颈）
+    command: --innodb-buffer-pool-size=1G
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: tuyou
@@ -31,6 +33,10 @@ services:
       SPRING_DATASOURCE_PASSWORD: tuyou123
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PASSWORD: tuyou123
+      # W4D3 压测调优：默认 Hikari 10 连接在 200 并发下成为瓶颈（加购 avg 1.4s 实为池队列等待）
+      SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: '50'
+      SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: '10'
+      SERVER_TOMCAT_THREADS_MAX: '300'
     ports: ['8082:8080']
 volumes:
   mysql-data:

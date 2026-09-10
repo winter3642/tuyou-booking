@@ -62,17 +62,17 @@ def sampler(name, path, method, body=None, extract_cart=False):
               </elementProp>
             </collectionProp>
           </elementProp>"""
-    extract_xml = ""
+    # 每个 sampler 后面必须跟一个 <hashTree/> 作为其子容器（JMX 树结构要求），
+    # 需要提取器时把 JSONPostProcessor 放进这个子容器
+    child_xml = ""
     if extract_cart:
-        extract_xml = """
-        <hashTree>
+        child_xml = f"""
           <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取购物车ID" enabled="true">
             <stringProp name="JSONPostProcessor.referenceNames">cartId</stringProp>
             <stringProp name="JSONPostProcessor.jsonPathExprs">$.data[0].id</stringProp>
             <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
           </JSONPostProcessor>
-          <hashTree/>
-        </hashTree>"""
+          <hashTree/>"""
     return f"""
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="{name}" enabled="true">{body_xml}
           <stringProp name="HTTPSampler.domain"></stringProp>
@@ -83,7 +83,9 @@ def sampler(name, path, method, body=None, extract_cart=False):
           <stringProp name="HTTPSampler.method">{method}</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
-        </HTTPSamplerProxy>{extract_xml}"""
+        </HTTPSamplerProxy>
+        <hashTree>{child_xml}
+        </hashTree>"""
 
 
 def plan(name, threads, ramp, loops, csv, vars_, samplers, base_url, sku, result_file):
@@ -187,9 +189,9 @@ def main():
         csv="users_qps.csv", vars_="token",
         base_url=args.base_url, sku=args.sku, result_file="results_qps.jtl",
         samplers=[
-            sampler("加购", "/api/cart", "POST", '{{"skuId":${{SKU_ID}},"quantity":1}}'),
+            sampler("加购", "/api/cart", "POST", '{"skuId":${SKU_ID},"quantity":1}'),
             sampler("查购物车", "/api/cart", "GET", extract_cart=True),
-            sampler("下单", "/api/orders", "POST", '{{"cartIds":[${{cartId}}]}}'),
+            sampler("下单", "/api/orders", "POST", '{"cartIds":[${cartId}]}'),
         ])
     (bench / "qps.jmx").write_text(qps, encoding="utf-8")
 
@@ -200,7 +202,7 @@ def main():
         csv="users_oversell.csv", vars_="token,cartId",
         base_url=args.base_url, sku=args.sku, result_file="results_oversell.jtl",
         samplers=[
-            sampler("下单(超卖验证)", "/api/orders", "POST", '{{"cartIds":[${{cartId}}]}}'),
+            sampler("下单(超卖验证)", "/api/orders", "POST", '{"cartIds":[${cartId}]}'),
         ])
     (bench / "oversell.jmx").write_text(oversell, encoding="utf-8")
     print("已生成 qps.jmx 与 oversell.jmx")
