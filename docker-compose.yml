@@ -26,7 +26,7 @@ services:
     depends_on:
       mysql: { condition: service_healthy }
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/tuyou?useSSL=false&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/tuyou?useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: tuyou
       SPRING_DATASOURCE_PASSWORD: tuyou123
       SPRING_DATA_REDIS_HOST: redis
