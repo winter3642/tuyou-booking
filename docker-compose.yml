@@ -1,0 +1,36 @@
+# 本机 Docker 全流程编排（W4D2）：
+# 本机 3306/6379/8080 被原生 MySQL / tuyou-redis / 本地应用占用 → 映射端口全部错开
+# 云服务器部署时把端口改回 3306/6379/8080，app 的 image 换成 ghcr.io/winter3642/tuyou-booking:latest
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: tuyou
+      MYSQL_USER: tuyou            # 镜像自动建用户并授权 tuyou.*，与 application.yml 凭据一致
+      MYSQL_PASSWORD: tuyou123
+    ports: ['3307:3306']
+    volumes:
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql   # 首次启动自动建 10 张表
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 10s
+      retries: 10
+  redis:
+    image: redis:7
+    command: redis-server --requirepass tuyou123
+    ports: ['6378:6379']
+  app:
+    build: .                      # 本机验证用 build；云服务器改为 image: ghcr.io/winter3642/tuyou-booking:latest
+    depends_on:
+      mysql: { condition: service_healthy }
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/tuyou?useSSL=false&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: tuyou
+      SPRING_DATASOURCE_PASSWORD: tuyou123
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PASSWORD: tuyou123
+    ports: ['8082:8080']
+volumes:
+  mysql-data:

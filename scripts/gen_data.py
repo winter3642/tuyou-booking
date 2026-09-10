@@ -10,6 +10,7 @@
     pip install pymysql
     python gen_data.py
 """
+import os
 import random
 import time
 from datetime import date, datetime, timedelta
@@ -28,8 +29,14 @@ DEST_PY = {'北京': 'beijing', '上海': 'shanghai', '南京': 'nanjing', '杭�
            '三亚': 'sanya', '成都': 'chengdu', '西安': 'xian', '厦门': 'xiamen',
            '丽江': 'lijiang', '桂林': 'guilin'}
 
-conn = pymysql.connect(host='localhost', user='tuyou', password='tuyou123',
-                       database='tuyou', charset='utf8mb4')
+# 连接参数环境变量化：默认连本机 3306 主库，压测环境用 TUYOU_DB_PORT=3307 指向 Docker Compose 的 MySQL
+conn = pymysql.connect(
+    host=os.environ.get('TUYOU_DB_HOST', 'localhost'),
+    port=int(os.environ.get('TUYOU_DB_PORT', '3306')),
+    user=os.environ.get('TUYOU_DB_USER', 'tuyou'),
+    password=os.environ.get('TUYOU_DB_PASSWORD', 'tuyou123'),
+    database=os.environ.get('TUYOU_DB_NAME', 'tuyou'),
+    charset='utf8mb4')
 cur = conn.cursor()
 t0 = time.time()
 
