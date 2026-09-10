@@ -5,6 +5,10 @@ name: CI
 on:
   push: { branches: [main] }
   pull_request:
+# GHCR 推送需要显式 packages: write（默认只读，否则 "Create organization package denied"）
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   test:
