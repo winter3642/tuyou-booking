@@ -1,7 +1,24 @@
 # 途游预订 - 旅游产品预订系统（跟团游/门票/酒店）
 
+[![CI](https://github.com/winter3642/tuyou-booking/actions/workflows/ci.yml/badge.svg)](https://github.com/winter3642/tuyou-booking/actions)
+
 > 主打：**数据库设计 + 慢 SQL 优化 + Redis 防超卖 + 工程化**。
 > 技术栈：Spring Boot 3.5 · MyBatis-Plus 3.5.9 · MySQL 8 · Redis 7 · Redisson · JWT · JaCoCo
+
+## 架构
+
+```mermaid
+flowchart LR
+    C[客户端] -->|HTTP + JWT| A[Spring Boot 应用]
+    A --> M[(MySQL 8<br/>10 张表 / 100 万订单)]
+    A --> R[(Redis 7<br/>Lua 库存扣减 / 详情缓存)]
+    A -->|CI 构建镜像| G[GitHub Actions → GHCR]
+    G -->|docker compose| D[Docker 部署]
+```
+
+- 鉴权：JWT（jjwt 0.12，HS384）+ 拦截器 + ThreadLocal（请求结束清理）
+- 库存：Redis Lua 原子预扣 → DB 条件扣减兜底 → 失败回滚 Redis
+- 缓存：Cache-Aside + 穿透（空值缓存）/ 击穿（Redisson 互斥锁）/ 雪崩（TTL 随机抖动）
 
 ## 数据库设计（10 张表）
 
@@ -90,6 +107,15 @@ erDiagram
 - 数据隔离：独立测试库 `tuyou_test` + `@Sql` 每方法前初始化/后清理（`@SqlConfig(encoding="UTF-8")` 显式声明脚本编码）
 - 运行：`mvn test jacoco:report`，报告在 `target/site/jacoco/index.html`
 - 测试数量：**104 个，全绿**；覆盖率：**95.9%**（470/490 行，不含 entity/dto/vo 纯数据类）
+
+## 压测（W4D3）
+
+详见 [docs/压测报告.md](docs/压测报告.md)（JMeter 5.6.3，计划文件 `scripts/bench/*.jmx` 可复现）。
+
+**核心结果：**
+- **超卖验证**：1000 并发抢 100 库存 → 成功下单恰好 **100**、DB/Redis 库存终值 **0**、无负库存、**超卖率 0** ✅
+- **下单接口**：200 并发 × 50 轮全链路（加购→查车→下单）30000 请求 0 传输错误；本机 Docker 部署形态 ~155 req/s，瓶颈经四轮排除（连接池/线程池/缓冲池/形态对比）定位为 **Docker Desktop Windows 端口转发**，非应用本身
+- 调优迭代与踩坑记录全部入报告（业务失败也返回 HTTP 200、订单时间戳为 DB UTC 默认值等）
 
 ## 快速开始
 
