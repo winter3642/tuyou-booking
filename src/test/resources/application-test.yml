@@ -4,7 +4,9 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${TEST_DB_URL:jdbc:mysql://localhost:3306/tuyou_test?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8}
+    # allowPublicKeyRetrieval=true：MySQL 8 默认 caching_sha2_password，非 SSL 连接必须允许取公钥
+    #（本地原生 MySQL 的 tuyou 用户无此问题，CI/容器的 mysql:8 必踩——W4D1 首跑红灯根因）
+    url: ${TEST_DB_URL:jdbc:mysql://localhost:3306/tuyou_test?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true}
     username: ${TEST_DB_USER:tuyou}
     password: ${TEST_DB_PASSWORD:tuyou123}
 
