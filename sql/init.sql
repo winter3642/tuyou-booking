@@ -1,7 +1,15 @@
 -- ============================================================
--- 途游预订 · 数据库初始化脚本（10 张表）
+-- 途游预订 · 数据库初始化脚本（建库 + 10 张表）
 -- 字符集 utf8mb4 / 引擎 InnoDB / 无物理外键（逻辑关联，生产惯例）
+-- 用法：mysql -uroot -p < sql/init.sql（自动建库并切换到 tuyou）
 -- ============================================================
+
+CREATE DATABASE IF NOT EXISTS tuyou DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE tuyou;
+-- 应用账号（与 application.yml 一致；Docker Compose 里 MYSQL_USER 已建，此处幂等无害）
+CREATE USER IF NOT EXISTS 'tuyou'@'localhost' IDENTIFIED BY 'tuyou123';
+GRANT ALL PRIVILEGES ON tuyou.* TO 'tuyou'@'localhost';
+FLUSH PRIVILEGES;
 
 -- 1. 用户表
 CREATE TABLE IF NOT EXISTS t_user (
